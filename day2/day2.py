@@ -24,8 +24,11 @@ class PasswordRule:
 		if password is None:
 			password = self.password
 
-		char_count = password.count(self.letter)
-		if self.min_repeat <= char_count <= self.max_repeat:
+		# char_count = password.count(self.letter)
+		# if self.min_repeat <= char_count <= self.max_repeat:
+		# 	return True
+
+		if bool(password[self.min_repeat - 1] == self.letter) ^ bool(password[self.max_repeat - 1] == self.letter):
 			return True
 
 		return False
