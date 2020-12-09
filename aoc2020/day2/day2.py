@@ -1,7 +1,7 @@
 # import attr
 from __future__ import annotations
 import re
-from typing import Optional
+from typing import Optional, List
 
 LINE_REGEX = re.compile("(\d+)-(\d+) ([a-z]): ([a-z]+)")
 
@@ -38,6 +38,9 @@ class PasswordRule:
     @classmethod
     def parse_from_line(cls, line: str) -> PasswordRule:
         m = re.match(LINE_REGEX, line)
+
+        if m is None:
+            raise ValueError(f"Could not parse line {line}")
 
         min_repeat, max_repeat, letter, password = m.group(1, 2, 3, 4)
         return PasswordRule(int(min_repeat), int(max_repeat), letter, password)

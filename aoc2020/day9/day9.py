@@ -36,6 +36,8 @@ def find_contiguous_range_that_sums_to(target: int, numbers: List[int]) -> List[
             elif sum_so_far > target:
                 break
 
+    raise ValueError(f"No contiguous range sums to {target}")
+
 
 def find_encryption_weakness(numbers: List[int], window: int) -> int:
     invalid_msg = find_first_invalid_msg(numbers, window)
