@@ -47,6 +47,18 @@ diff_dist = diff_dist_for_input_file("input.txt")
 print(diff_dist[1] * diff_dist[3])
 
 
+def combo2(lst, n):
+    if n == 0:
+        return [[]]
+    l = []
+    for i in range(0, len(lst)):
+        m = lst[i]
+        remLst = lst[i + 1 :]
+        for p in combo2(remLst, n - 1):
+            l.append([m] + p)
+    return l
+
+
 def valid_combinations(adapters: List[int]) -> int:
     valid_options = 0
 
@@ -55,7 +67,7 @@ def valid_combinations(adapters: List[int]) -> int:
 
     for r in range(1, len(sorted_adapters) + 1):
         print(f"Trying candidates of len {r} / {len(sorted_adapters)}")
-        for option in itertools.combinations(sorted_adapters, r):
+        for option in combo2(sorted_adapters, r):
             candidate = [0, *option, target]
             if validate_differences(candidate):
                 print(candidate)
@@ -68,6 +80,6 @@ def valid_combinations(adapters: List[int]) -> int:
 
 # valid_combinations([5, 8, 10])
 assert valid_combinations(adapters_for_input_file("minimal_input.txt")) == 8
-assert valid_combinations(adapters_for_input_file("medium_input.txt")) == 19208
+# assert valid_combinations(adapters_for_input_file("medium_input.txt")) == 19208
 
 # print(valid_combinations(adapters_for_input_file("input.txt")))
