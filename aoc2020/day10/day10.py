@@ -48,43 +48,28 @@ def diff_dist_for_input_file(file_name: str) -> Dict[int, int]:
 # print(diff_dist[1] * diff_dist[3])
 
 
-def combo2(lst: List[int], n: int, prev_el=0):
-    if n == 0:
-        return [[]]
-    l = []
-    for i in range(0, len(lst)):
-        m = lst[i]
-        if m - prev_el > TOLERANCE:
-            break
-
-        remLst = lst[i + 1 :]
-
-        for p in combo2(remLst, n - 1, m):
-            l.append([m] + p)
-    return l
+def count_ways(
+    adapters: Set[int], current_value: int, cached_calculation: Dict[int, int]
+):
+    if current_value in cached_calculation:
+        return cached_calculation[current_value]
+    cached_calculation[current_value] = sum(
+        [
+            count_ways(adapters, i, cached_calculation)
+            for i in range(current_value + 1, current_value + 4)
+            if i in adapters
+        ]
+    )
+    return cached_calculation[current_value]
 
 
 def valid_combinations(adapters: List[int]) -> int:
-    valid_options = 0
-
-    sorted_adapters = sorted(adapters)
-    target = sorted_adapters[-1] + 3
-
-    min_steps = math.ceil(target / 3)
-
-    for r in range(min_steps, len(sorted_adapters) + 1):
-        print(f"Trying candidates of len {r} / {len(sorted_adapters)}")
-        for option in combo2(sorted_adapters, r):
-            if target - option[-1] <= TOLERANCE:
-                valid_options += 1
-
-        print(f"Found {valid_options} candidates so far.")
-
-    return valid_options
+    cached_calculation = {sorted(adapters)[-1]: 1}
+    count_ways(set(adapters), 0, cached_calculation)
+    return cached_calculation[0]
 
 
-# valid_combinations([5, 8, 10])
 assert valid_combinations(adapters_for_input_file("minimal_input.txt")) == 8
 assert valid_combinations(adapters_for_input_file("medium_input.txt")) == 19208
 
-# print(valid_combinations(adapters_for_input_file("input.txt")))
+print(valid_combinations(adapters_for_input_file("input.txt")))
