@@ -3,7 +3,6 @@ import attr
 from enum import Enum
 
 from typing import List, Tuple, Callable
-from collections import defaultdict
 
 
 class SeatState(Enum):
@@ -23,25 +22,9 @@ class SeatState(Enum):
             raise NotImplementedError(f"No seat state for {label}")
 
 
-DIRECTIONS = dict(
-    down=lambda coord: (coord[0] + 1, coord[1]),
-    downright=lambda coord: (coord[0] + 1, coord[1] + 1),
-    downleft=lambda coord: (coord[0] + 1, coord[1] - 1),
-    right=lambda coord: (coord[0], coord[1] + 1),
-    left=lambda coord: (coord[0], coord[1] - 1),
-    up=lambda coord: (coord[0] - 1, coord[1]),
-    upright=lambda coord: (coord[0] - 1, coord[1] + 1),
-    upleft=lambda coord: (coord[0] - 1, coord[1] - 1),
-)
-
-
 @attr.s(auto_attribs=True, frozen=True)
 class Ferry:
     seats: List[List[SeatState]]
-
-    _first_seat_cache: Dict[Tuple[int, int], Dict[str, Tuple[int, int]]] = attr.ib(
-        factory=lambda: defaultdict(dict)
-    )
 
     @classmethod
     def from_input_file(cls, filename: str):
@@ -72,7 +55,7 @@ class Ferry:
 
         for row in range(num_rows):
             new_seats.append([self.next_value(row, col) for col in range(num_cols)])
-        return Ferry(new_seats, self._first_seat_cache)
+        return Ferry(new_seats)
 
     def next_value(self, row: int, col: int) -> SeatState:
         """
@@ -110,12 +93,20 @@ class Ferry:
         """
         coord = (row, col)
 
+        transforms = [
+            lambda coord: (coord[0] + 1, coord[1]),
+            lambda coord: (coord[0] + 1, coord[1] + 1),
+            lambda coord: (coord[0] + 1, coord[1] - 1),
+            lambda coord: (coord[0], coord[1] + 1),
+            lambda coord: (coord[0], coord[1] - 1),
+            lambda coord: (coord[0] - 1, coord[1]),
+            lambda coord: (coord[0] - 1, coord[1] + 1),
+            lambda coord: (coord[0] - 1, coord[1] - 1),
+        ]
+
         occupied = 0
-        for direction, transform in DIRECTIONS.items():
-            if (
-                self.state_of_first_chair(coord, direction, transform)
-                == SeatState.occupied
-            ):
+        for transform in transforms:
+            if self.state_of_first_chair(coord, transform) == SeatState.occupied:
                 occupied += 1
 
         return occupied
@@ -123,7 +114,6 @@ class Ferry:
     def state_of_first_chair(
         self,
         coord: Tuple[int, int],
-        direction: str,
         transform: Callable[[Tuple[int, int]], Tuple[int, int]],
     ) -> SeatState:
         """
@@ -138,22 +128,11 @@ class Ferry:
             0 <= coord[1] < num_cols
         )
 
-        if (
-            coord in self._first_seat_cache
-            and direction in self._first_seat_cache[coord]
-        ):
-            new_coord = self._first_seat_cache[coord][direction]
-            if not coord_valid(new_coord):
-                return SeatState.floor
-
-            return self.seats[new_coord[0]][new_coord[1]]
-
         new_coord = transform(coord)
         while coord_valid(new_coord):
             chair_val = self.seats[new_coord[0]][new_coord[1]]
 
             if chair_val != SeatState.floor:
-                self._first_seat_cache[coord][direction] = new_coord
                 return chair_val
 
             coord = new_coord
@@ -164,7 +143,7 @@ class Ferry:
 
 def find_stable_ferry(ferry: Ferry) -> Ferry:
     next_round = ferry.next_round()
-    while ferry.to_str() != next_round.to_str():
+    while ferry != next_round:
         ferry = next_round
         next_round = ferry.next_round()
 
@@ -176,10 +155,7 @@ def find_stable_ferry(ferry: Ferry) -> Ferry:
 test_ferry = Ferry.from_input_file("minimal_input.txt")
 stable_ferry = find_stable_ferry(test_ferry)
 assert stable_ferry.num_occupied == 26
-assert (
-    stable_ferry.to_str()
-    == Ferry.from_input_file("minimal_input_stabilized.txt").to_str()
-)
+assert stable_ferry == Ferry.from_input_file("minimal_input_stabilized.txt")
 
 # ------------------------------------------------
 
