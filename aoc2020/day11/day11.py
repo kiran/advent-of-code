@@ -2,7 +2,7 @@ from __future__ import annotations
 import attr
 from enum import Enum
 
-from typing import List
+from typing import List, Tuple, Callable
 
 
 class SeatState(Enum):
@@ -27,7 +27,10 @@ class Ferry:
     seats: List[List[SeatState]]
 
     @classmethod
-    def from_input_lines(cls, lines):
+    def from_input_file(cls, filename: str):
+        with open(filename) as f:
+            input_lines = f.read().splitlines()
+
         seats: List[List[SeatState]] = []
         for line in input_lines:
             row = [SeatState.from_str(char) for char in line.strip()]
@@ -71,47 +74,71 @@ class Ferry:
         if current_state == SeatState.floor:
             return current_state
 
-        adjacent_occupied = self.count_adjacenct_occupied(row, col, SeatState.occupied)
+        adjacent_occupied = self.count_occupied_in_directions(row, col)
 
         if current_state == SeatState.empty:
             if adjacent_occupied == 0:
                 return SeatState.occupied
             return SeatState.empty
         elif current_state == SeatState.occupied:
-            if adjacent_occupied >= 4:
+            if adjacent_occupied >= 5:
                 return SeatState.empty
             return SeatState.occupied
         else:
             raise NotImplementedError(f"Unclear seat state: {current_state}")
 
-    def count_adjacenct_occupied(
-        self, row: int, col: int, state: SeatState = SeatState.occupied
-    ) -> int:
+    def count_occupied_in_directions(self, row: int, col: int) -> int:
         """
         Count how many adjacent seats are in the state.
         """
-        num_rows = len(self.seats)
-        num_cols = len(self.seats[0])
+        coord = (row, col)
 
-        adjacent_coords = filter(
-            lambda coord: (0 <= coord[0] < num_rows) and (0 <= coord[1] < num_cols),
-            [
-                (row + 1, col),
-                (row + 1, col + 1),
-                (row + 1, col - 1),
-                (row, col + 1),
-                (row, col - 1),
-                (row - 1, col),
-                (row - 1, col + 1),
-                (row - 1, col - 1),
-            ],
-        )
+        transforms = [
+            lambda coord: (coord[0] + 1, coord[1]),
+            lambda coord: (coord[0] + 1, coord[1] + 1),
+            lambda coord: (coord[0] + 1, coord[1] - 1),
+            lambda coord: (coord[0], coord[1] + 1),
+            lambda coord: (coord[0], coord[1] - 1),
+            lambda coord: (coord[0] - 1, coord[1]),
+            lambda coord: (coord[0] - 1, coord[1] + 1),
+            lambda coord: (coord[0] - 1, coord[1] - 1),
+        ]
 
         occupied = 0
-        for row, col in adjacent_coords:
-            if self.seats[row][col] == state:
+        for transform in transforms:
+            if self.state_of_first_chair(coord, transform) == SeatState.occupied:
                 occupied += 1
+
         return occupied
+
+    def state_of_first_chair(
+        self,
+        coord: Tuple[int, int],
+        transform: Callable[[Tuple[int, int]], Tuple[int, int]],
+    ) -> SeatState:
+        """
+        Return the seat state of the first non-floor seat we see,
+        or return floor if there are no seats in that direction.
+
+        TODO: cache the location of the first chair for a given coord
+        """
+        num_rows = len(self.seats)
+        num_cols = len(self.seats[0])
+        coord_valid = lambda coord: (0 <= coord[0] < num_rows) and (
+            0 <= coord[1] < num_cols
+        )
+
+        new_coord = transform(coord)
+        while coord_valid(new_coord):
+            chair_val = self.seats[new_coord[0]][new_coord[1]]
+
+            if chair_val != SeatState.floor:
+                return chair_val
+
+            coord = new_coord
+            new_coord = transform(coord)
+
+        return SeatState.floor
 
 
 def find_stable_ferry(ferry: Ferry) -> Ferry:
@@ -125,21 +152,15 @@ def find_stable_ferry(ferry: Ferry) -> Ferry:
 
 # ------------------------------------------------
 
-with open("./minimal_input.txt") as f:
-    input_lines = f.read().splitlines()
-
-test_ferry = Ferry.from_input_lines(input_lines)
-assert test_ferry.to_str() == "\n".join(input_lines)
-assert test_ferry.num_occupied == 0
+test_ferry = Ferry.from_input_file("minimal_input.txt")
 stable_ferry = find_stable_ferry(test_ferry)
-assert stable_ferry.num_occupied == 37
+assert stable_ferry.num_occupied == 26
+assert stable_ferry == Ferry.from_input_file("minimal_input_stabilized.txt")
 
 # ------------------------------------------------
 
-with open("./input.txt") as f:
-    input_lines = f.read().splitlines()
 
-ferry = Ferry.from_input_lines(input_lines)
-stable_ferry = find_stable_ferry(ferry)
+test_ferry = Ferry.from_input_file("input.txt")
+stable_ferry = find_stable_ferry(test_ferry)
 
 print(stable_ferry.num_occupied)
