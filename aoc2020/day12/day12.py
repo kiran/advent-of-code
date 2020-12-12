@@ -39,9 +39,9 @@ class Position:
     horiz: int
     vert: int
 
-    # heading in degrees
-    # todo: validator?
-    heading: int
+    # the waypoint's position is defined relative to the ship
+    waypoint_horiz: int
+    waypoint_vert: int
 
     @property
     def manhattan_distance(self) -> int:
@@ -49,56 +49,68 @@ class Position:
 
     def move(self, command: Command) -> Position:
         """
-        N means to move north by the given value.
-        S means to move south by the given value.
-        E means to move east by the given value.
-        W means to move west by the given value.
-        L means to turn left the given number of degrees.
-        R means to turn right the given number of degrees.
-        F means to move forward by the given value in the direction the ship is currently facing.
+        Action N means to move the waypoint north by the given value.
+        Action S means to move the waypoint south by the given value.
+        Action E means to move the waypoint east by the given value.
+        Action W means to move the waypoint west by the given value.
+        Action L means to rotate the waypoint around the ship left (counter-clockwise) the given number of degrees.
+        Action R means to rotate the waypoint around the ship right (clockwise) the given number of degrees.
+        Action F means to move forward to the waypoint a number of times equal to the given value.
         """
         if command.action == "N":
-            return attr.evolve(self, vert=self.vert + command.value)
+            return attr.evolve(self, waypoint_vert=self.waypoint_vert + command.value)
         elif command.action == "S":
-            return attr.evolve(self, vert=self.vert - command.value)
+            return attr.evolve(self, waypoint_vert=self.waypoint_vert - command.value)
         elif command.action == "E":
-            return attr.evolve(self, horiz=self.horiz + command.value)
+            return attr.evolve(self, waypoint_horiz=self.waypoint_horiz + command.value)
         elif command.action == "W":
-            return attr.evolve(self, horiz=self.horiz - command.value)
+            return attr.evolve(self, waypoint_horiz=self.waypoint_horiz - command.value)
         elif command.action == "R":
-            new_heading = (self.heading - command.value) % 360
-            return attr.evolve(self, heading=new_heading)
+            return self.move_waypoint_around_ship(-command.value)
         elif command.action == "L":
-            new_heading = (self.heading + command.value) % 360
-            return attr.evolve(self, heading=new_heading)
+            return self.move_waypoint_around_ship(command.value)
         elif command.action == "F":
-            rads = math.radians(self.heading)
-            horiz = self.horiz + int(math.cos(rads) * command.value)
-            vert = self.vert + int(math.sin(rads) * command.value)
+            horiz = self.horiz + (command.value * self.waypoint_horiz)
+            vert = self.vert + (command.value * self.waypoint_vert)
             return attr.evolve(self, horiz=horiz, vert=vert)
         else:
             raise NotImplementedError(f"todo: {command}")
 
+    def move_waypoint_around_ship(self, degrees: int) -> Position:
+        """
+        TIME FOR SOME TRIG
+
+        note: this rotates counter-clockwise
+        """
+        radians = math.radians(degrees)
+        x = self.waypoint_horiz
+        y = self.waypoint_vert
+
+        xx = int(x * math.cos(radians)) - int(y * math.sin(radians))
+        yy = int(x * math.sin(radians)) + int(y * math.cos(radians))
+
+        return attr.evolve(self, waypoint_horiz=xx, waypoint_vert=yy)
+
 
 def positions_from_file(filename: str, debug: bool = False) -> List[Position]:
     commands = commands_from_file(filename)
-    positions = [Position(0, 0, 0)]
+    positions = [Position(0, 0, 10, 1)]
 
     for command in commands:
         new_pos = positions[-1].move(command)
         positions.append(new_pos)
         if debug:
-            print(new_pos)
+            print(command, new_pos)
 
     return positions
 
 
 if __name__ == "__main__":
 
-    assert Position(17, 8, 0).manhattan_distance == 25
+    assert Position(17, 8, 0, 0).manhattan_distance == 25
 
     positions = positions_from_file("minimal_input.txt")
-    assert positions[-1].manhattan_distance == 25
+    assert positions[-1].manhattan_distance == 286
 
     positions = positions_from_file("input.txt", debug=False)
     print(positions[-1].manhattan_distance)
